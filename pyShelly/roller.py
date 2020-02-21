@@ -66,6 +66,4 @@ class Roller(Device):
         self._send_command("/roller/0?go=stop")
 
     def set_position(self, pos):
-        if pos >= 1:
-            pos = pos + ((100 - pos) * self.offset / 100)
         self._send_command("/roller/0?go=to_pos&roller_pos=" + str(pos))
