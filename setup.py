@@ -21,14 +21,14 @@ def find_version(*file_paths):
     raise RuntimeError("Unable to find version string.")
 
 setuptools.setup(
-    name="pyShelly",
-    version=find_version("pyShelly", "const.py"),
+    name="pyShellyEx",
+    version=find_version("pyShellyEx", "const.py"),
     author="StyraHem / Tarra AB",
     author_email="info@styrahem.se",
-    description="Library for Shelly smart home devices",
+    description="Library for Shelly smart home devices (Modified version)",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/StyraHem/pyShelly",
+    url="https://github.com/GoNzCiD/pyShelly",
     packages=setuptools.find_packages(),
     classifiers=[
         "Programming Language :: Python :: 2.7",
