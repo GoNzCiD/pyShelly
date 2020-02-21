@@ -22,7 +22,7 @@ def find_version(*file_paths):
 
 setuptools.setup(
     name="pyShellyEx",
-    version=find_version("pyShellyEx", "const.py"),
+    version=find_version("pyShelly", "const.py"),
     author="StyraHem / Tarra AB",
     author_email="info@styrahem.se",
     description="Library for Shelly smart home devices (Modified version)",
