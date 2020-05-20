@@ -7,3 +7,4 @@ sendToPyPi.sh
 desktop.ini
 .vscode
 .idea
+/venv/
