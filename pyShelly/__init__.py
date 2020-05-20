@@ -15,7 +15,9 @@ from .block import Block
 from .device import Device
 from .utils import exception_log, timer
 from .coap import CoAP
+from .mqtt import MQTT
 from .mdns import MDns
+
 #from .device.relay import Relay
 #from .device.switch import Switch
 #from .device.powermeter import Po
@@ -63,7 +65,7 @@ except:
     import httplib
 
 class pyShelly():
-    def __init__(self):
+    def __init__(self, loop=None):
         LOGGER.info("Init  %s", VERSION)
         self.stopped = threading.Event()
         self.blocks = {}
@@ -71,6 +73,8 @@ class pyShelly():
         self.cb_block_added = []
         self.cb_device_added = []
         self.cb_device_removed = []
+        self.cb_save_cache = None
+        self.cb_load_cache = None
         # Used if igmp packages not sent correctly
         self.igmp_fix_enabled = False
         self.mdns_enabled = False
@@ -88,14 +92,28 @@ class pyShelly():
 
         self._coap = CoAP(self)
         self._mdns = None
+        self._mqtt = MQTT(self)
         self.host_ip = ''
+        self.bind_ip = ''
 
         self._shelly_by_ip = {}
-
         #self.loop = asyncio.get_event_loop()
+        if loop:
+            self.loop = loop
+        else:
+            self.loop = asyncio.get_event_loop()
 
         self._send_discovery_timer = timer(timedelta(seconds=60))
         self._check_by_ip_timer = timer(timedelta(seconds=60))
+
+    def load_cache(self, name):
+        if self.cb_load_cache:
+            return self.cb_load_cache(name)
+        return None
+
+    def save_cache(self, name, data):
+        if self.cb_save_cache:
+            self.cb_save_cache(name, data)
 
     def start(self):
         if self.mdns_enabled:
@@ -107,6 +125,8 @@ class pyShelly():
             self._coap.start()
         if self._mdns:
             self._mdns.start()
+        if self._mqtt:
+            self._mqtt.start()
         #asyncio.ensure_future(self._update_loop())
         self._update_thread = threading.Thread(target=self._update_loop)
         self._update_thread.name = "Poll"
@@ -124,6 +144,8 @@ class pyShelly():
             self._coap.close()
         if self._mdns:
             self._mdns.close()
+        if self._mqtt:
+            self._mqtt.close()
         if self._update_thread is not None:
             self._update_thread.join()
         if self._socket:
@@ -134,7 +156,6 @@ class pyShelly():
             self._coap.discover()
 
     def add_device_by_ip(self, ip_addr, src):
-        LOGGER.debug("Check add device by host %s %s", ip_addr, src)
         if ip_addr not in self._shelly_by_ip:
             LOGGER.debug("Add device by host %s %s", ip_addr, src)
             self._shelly_by_ip[ip_addr] = {'done':False, 'src':src,
@@ -142,8 +163,9 @@ class pyShelly():
         else:
             block = self._shelly_by_ip[ip_addr]['poll_block']
             if block:
+                if not src in block.protocols:
+                    block.protocols.append(src)
                 self._poll_block(block)
-
 
     def check_by_ip(self):
         for ip_addr in list(self._shelly_by_ip.keys()):
@@ -173,7 +195,8 @@ class pyShelly():
                                 self._shelly_by_ip[ip_addr]['poll_block'] \
                                     = block
                 if not done:
-                    LOGGER.info("Error adding device, %s", ip_addr)
+                    LOGGER.info("Error adding device, %s %s",
+                                ip_addr, data['src'])
 
     def add_device(self, dev, discovery_src):
         LOGGER.debug('Add device')
@@ -194,18 +217,24 @@ class pyShelly():
         for callback in self.cb_device_removed:
             callback(dev, discovery_src)
 
-    def update_block(self, block_id, device_type, ipaddr, src, payload):
+    def update_block(self, block_id, device_type, ipaddr, src, payload,
+                     force_poll=False):
         if self.only_device_id is not None and \
             block_id != self.only_device_id:
             return
 
         block_added = False
         if block_id not in self.blocks:
+            if not ipaddr:
+                return
             block = self.blocks[block_id] = \
                 Block(self, block_id, device_type, ipaddr, src)
             block_added = True
 
         block = self.blocks[block_id]
+
+        if not src in block.protocols:
+            block.protocols.append(src)
 
         if payload:
             data = {d[1]:d[2] for d in json.loads(payload)['G']}
@@ -218,11 +247,11 @@ class pyShelly():
             for device in block.devices:
                 self.add_device(device, block.discovery_src)
 
-        if block.sleep_device:
-            self._poll_block(block)
+        if block.sleep_device or force_poll:
+            self._poll_block(block, force_poll)
 
     def _update_loop(self):
-        LOGGER.info("Start update loop, %s sec", self.update_status_interval)
+        LOGGER.debug("Start update loop, %s sec", self.update_status_interval)
         while not self.stopped.isSet():
             try:
                 #LOGGER.debug("Checking blocks")
@@ -233,22 +262,23 @@ class pyShelly():
 
                 for key in list(self.blocks.keys()):
                     block = self.blocks[key]
-                    #LOGGER.debug("Checking block, %s %s",
-                    # block.id, block.last_update_status_info)
 
                     if not block.sleep_device:
                         self._poll_block(block)
 
-                time.sleep(0.5)
+                    block.check_available()
+
+                time.sleep(10)
             except Exception as ex:
                 exception_log(ex, "Error update loop")
 
-    def _poll_block(self, block):
+    def _poll_block(self, block, force=False):
         now = datetime.now()
-        if self.update_status_interval is not None and \
+        if force or \
+            (self.update_status_interval is not None and \
             (block.last_update_status_info is None or \
             now - block.last_update_status_info \
-                > self.update_status_interval):
+                > self.update_status_interval)):
 
             LOGGER.debug("Polling block, %s %s", block.id, block.type)
             block.last_update_status_info = now

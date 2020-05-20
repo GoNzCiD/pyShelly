@@ -37,6 +37,12 @@ class Relay(Device):
         self.is_sensor = power_idx is not None
         self.info_values = {}
 
+    def as_light(self):
+        if self.block.parent.cloud:
+            usage = self.block.parent.cloud.get_relay_usage(self.unit_id,
+                                                           self._channel)
+            return usage == 'light'
+
     def update(self, data):
         new_state = data.get(self._pos) == 1
         if self._power_idx is not None:
@@ -58,15 +64,17 @@ class Relay(Device):
                     relay.get(STATUS_RESPONSE_RELAY_OVER_POWER)
             if relay.get(STATUS_RESPONSE_RELAY_STATE) is not None:
                 new_state = relay.get(STATUS_RESPONSE_RELAY_STATE)
-        meters = status.get(STATUS_RESPONSE_METERS)
-        if meters and len(meters) > self._channel:
-            meter = meters[self._channel]
-            if meter.get(STATUS_RESPONSE_METERS_POWER) is not None:
-                self.info_values[INFO_VALUE_CURRENT_CONSUMPTION] = \
-                    round(float(meter.get(STATUS_RESPONSE_METERS_POWER)))
-            if meter.get(STATUS_RESPONSE_METERS_TOTAL) is not None:
-                self.info_values[INFO_VALUE_TOTAL_CONSUMPTION] = \
-                  round(float(meter.get(STATUS_RESPONSE_METERS_TOTAL)) / 60)
+        if self._power_idx:
+            meters = status.get(STATUS_RESPONSE_METERS)
+            if meters and len(meters) > 0:
+                idx = min(self._channel, len(meters)-1)
+                meter = meters[idx]
+                if meter.get(STATUS_RESPONSE_METERS_POWER) is not None:
+                    self.info_values[INFO_VALUE_CURRENT_CONSUMPTION] = \
+                        round(float(meter.get(STATUS_RESPONSE_METERS_POWER)))
+                if meter.get(STATUS_RESPONSE_METERS_TOTAL) is not None:
+                    self.info_values[INFO_VALUE_TOTAL_CONSUMPTION] = \
+                    round(float(meter.get(STATUS_RESPONSE_METERS_TOTAL)) / 60)
 
         inputs = status.get(STATUS_RESPONSE_INPUTS)
         if inputs:

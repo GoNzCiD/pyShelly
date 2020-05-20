@@ -22,23 +22,32 @@ class Device(object):
         self.device_sub_type = None #Used to make sensors unique
         self.lazy_load = False
         self.device_nr = None
+        self.master = False
+        self.ext_sensor = None
 
     def friendly_name(self):
         try:
             if self.block.parent.cloud:
                 device_id = self.id.lower().split('-')
                 name = None
-                add_nr = False
-                if len(device_id) > 1 and int(device_id[1]) > 1:
-                    cloud_id = device_id[0] + '_' + str(int(device_id[1])-1)
-                    name = self.block.parent.cloud.get_device_name(cloud_id)
-                    if not name:
-                        add_nr = True
-                if not name:
-                    name = \
-                      self.block.parent.cloud.get_device_name(device_id[0])
-                    if add_nr:
-                        name += " - " + device_id[1]
+                #add_nr = False
+                idx = int(device_id[1]) if len(device_id) > 1 else 0
+                name = self.block.parent.cloud.get_device_name(device_id[0],
+                                                               idx,
+                                                               self.ext_sensor)
+
+                # if len(device_id) > 1 and int(device_id[1]) > 1:
+                #     cloud_id = device_id[0] + '_' + str(int(device_id[1])-1)
+                #     name = self.block.parent.cloud.get_device_name(cloud_id,
+                #                                                self.ext_sensor)
+                #     if not name:
+                #         add_nr = True
+                # if not name:
+                #     name = \
+                #       self.block.parent.cloud.get_device_name(device_id[0],
+                #                                               self.ext_sensor)
+                #     if add_nr:
+                #         name += " - " + device_id[1]
                 if name:
                     return name
         except Exception as ex:
@@ -75,6 +84,10 @@ class Device(object):
 
     def available(self):
         return self.block.available()
+
+    @property
+    def protocols(self):
+        return self.block.protocols
 
     def _update(self, new_state=None, new_state_values=None, new_values=None,
                 info_values=None):
@@ -116,3 +129,4 @@ class Device(object):
 
     def _reload_block(self):
         self.block.reload = True
+

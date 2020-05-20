@@ -4,8 +4,8 @@ import logging
 
 LOGGER = logging.getLogger('pyShellyEx')
 
-NAME = "pyShellyEx"
-VERSION = "0.1.2"
+NAME = "pyShelly"
+VERSION = "0.1.30"
 
 COAP_IP = "224.0.1.187"
 COAP_PORT = 5683
@@ -21,6 +21,10 @@ STATUS_RESPONSE_RELAY_STATE = 'ison'
 STATUS_RESPONSE_METERS = 'meters'
 STATUS_RESPONSE_METERS_POWER = 'power'
 STATUS_RESPONSE_METERS_TOTAL = 'total'
+STATUS_RESPONSE_METERS_VOLTAGE = 'voltage'
+STATUS_RESPONSE_METERS_PF = 'pf'
+STATUS_RESPONSE_METERS_CURRENT = 'current'
+STATUS_RESPONSE_METERS_TOTAL_RETURNED = 'total_returned'
 
 STATUS_RESPONSE_EMETERS = 'emeters'
 
@@ -30,10 +34,12 @@ STATUS_RESPONSE_INPUTS_INPUT = 'input'
 STATUS_RESPONSE_LIGHTS = 'lights'
 STATUS_RESPONSE_LIGHTS_STATE = 'ison'
 STATUS_RESPONSE_LIGHTS_BRIGHTNESS = 'brightness'
+STATUS_RESPONSE_LIGHTS_WHITE = 'white'
 STATUS_RESPONSE_LIGHTS_MODE = 'mode'
 STATUS_RESPONSE_LIGHTS_RED = 'red'
 STATUS_RESPONSE_LIGHTS_GREEN = 'green'
 STATUS_RESPONSE_LIGHTS_BLUE = 'blue'
+STATUS_RESPONSE_LIGHTS_POWER = 'power'
 
 STATUS_RESPONSE_ROLLERS = 'rollers'
 STATUS_RESPONSE_ROLLERS_STATE = 'state'
@@ -61,6 +67,10 @@ INFO_VALUE_SWITCH = 'switch'
 INFO_VALUE_BATTERY = 'battery'
 INFO_VALUE_PAYLOAD = 'payload'
 INFO_VALUE_TOTAL_CONSUMPTION = 'total_consumption'
+INFO_VALUE_TOTAL_RETURNED = 'total_returned'
+INFO_VALUE_VOLTAGE = 'voltage'
+INFO_VALUE_POWER_FACTOR = 'power_factor'
+INFO_VALUE_CURRENT = 'current'
 
 ATTR_PATH = 'path'
 ATTR_FMT = 'fmt'
@@ -72,36 +82,44 @@ BLOCK_INFO_VALUES = {
     INFO_VALUE_DEVICE_TEMP : {ATTR_PATH : 'tmp/tC', ATTR_FMT : 'round'},
     INFO_VALUE_OVER_TEMPERATURE : {ATTR_PATH : 'overtemperature'},
     INFO_VALUE_HAS_FIRMWARE_UPDATE : {ATTR_PATH : 'update/has_update'},
-    INFO_VALUE_LATEST_FIRMWARE_VERSION : {ATTR_PATH : 'update/new_version'},
-    INFO_VALUE_FW_VERSION : {ATTR_PATH : 'update/old_version'},
+    INFO_VALUE_LATEST_FIRMWARE_VERSION : {ATTR_PATH : 'update/new_version',
+                                          ATTR_FMT : 'ver'},
+    INFO_VALUE_FW_VERSION : {ATTR_PATH : 'update/old_version',
+                             ATTR_FMT : 'ver'},
     INFO_VALUE_CLOUD_ENABLED : {ATTR_PATH : 'cloud/enabled'},
     INFO_VALUE_CLOUD_CONNECTED : {ATTR_PATH : 'cloud/connected'},
     INFO_VALUE_MQTT_CONNECTED : {ATTR_PATH : 'mqtt/connected'},
-    INFO_VALUE_CURRENT_CONSUMPTION : {ATTR_PATH : 'consumption'},
+    #INFO_VALUE_CURRENT_CONSUMPTION : {ATTR_PATH : 'consumption'},
+    #INFO_VALUE_VOLTAGE : {ATTR_PATH : 'voltage', ATTR_FMT : 'round'},
     INFO_VALUE_BATTERY : {ATTR_PATH : 'bat/value'}
 }
 
 SHELLY_TYPES = {
-    'SHSW-1': {'name': "Shelly 1"},
-    'SHSW-21': {'name': "Shelly 2"},
+    'SHSW-1': {'name': "Shelly 1", 'mqtt':'shelly1'},
+    'SHSW-21': {'name': "Shelly 2", 'mqtt':'shellyswitch'},
     'SHSW-22': {'name': "Shelly HD Pro"},
-    'SHSW-25': {'name': "Shelly 2.5"},
-    'SHSW-44': {'name': "Shelly 4 Pro"},
-    'SHPLG-1': {'name': "Shelly Plug"},
+    'SHSW-25': {'name': "Shelly 2.5", 'mqtt':'shellyswitch25'},
+    'SHSW-44': {'name': "Shelly 4 Pro", 'mqtt':'shelly4pro'},
+    'SHPLG-1': {'name': "Shelly Plug", 'mqtt':'shellyplug'},
     'SHPLG2-1': {'name': "Shelly Plug"},
-    'SHPLG-S': {'name': "Shelly Plug S"},
+    'SHPLG-S': {'name': "Shelly Plug S", 'mqtt':'shellyplug-s'},
     'SHRGBWW-01': {'name': "Shelly RGBWW"},
-    'SHBLB-1': {'name': "Shelly Bulb"},
-    'SHHT-1': {'name': "Shelly H&T"},
-    'SHRGBW2': {'name': "Shelly RGBW2"},
-    'SHEM': {'name': "Shelly EM"},
+    'SHBLB-1': {'name': "Shelly Bulb", 'mqtt':'shellybulb'},
+    'SHHT-1': {'name': "Shelly H&T", 'battery' : True, 'mqtt':'shellyht'},
+    'SHRGBW2': {'name': "Shelly RGBW2", 'mqtt':'shellyrgbw2'},
+    'SHEM': {'name': "Shelly EM", 'mqtt':'shellyem'},
+    'SHEM-3': {'name': "Shelly 3EM", 'mqtt':'shellyem3'},
     'SHCL-255': {'name': "Shelly Bulb"},
     'SH2LED-1': {'name': "Shelly 2LED"},
     'SHSK-1': {'name': "Shelly Socket"},
-    'SHSW-PM': {'name': "Shelly 1 PM"},
-    'SHWT-1': {'name': "Shelly Flood"},
-    'SHDM-1': {'name': "Shelly Dimmer"},
+    'SHSW-PM': {'name': "Shelly 1 PM", 'mqtt':'shelly1pm'},
+    'SHWT-1': {'name': "Shelly Flood", 'battery' : True, 'mqtt':'shellyflood'},
+    'SHDM-1': {'name': "Shelly Dimmer", 'mqtt':'shellydimmer'},
+    'SHDW-1': {'name': "Shelly Door/Window", 'battery' : True, 'mqtt':'shellydw'},
+    'SHBDUO-1': {'name': "Shelly Duo", 'mqtt':'ShellyBulbDuo'},
+    'SHBVIN-1': {'name': "Shelly Vintage", 'mqtt':'ShellyVintage'}
 }
+
 
 EFFECTS_RGBW2 = [
     {'name': "Off", 'effect': 0},
