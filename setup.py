@@ -28,6 +28,7 @@ setuptools.setup(
     description="Library for Shelly smart home devices (Modified version)",
     long_description=LONG_DESCRIPTION,
     long_description_content_type="text/markdown",
+    install_requires=['zeroconf'],
     url="https://github.com/GoNzCiD/pyShelly",
     packages=setuptools.find_packages(),
     classifiers=[
