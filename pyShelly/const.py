@@ -5,13 +5,15 @@ import logging
 LOGGER = logging.getLogger('pyShellyEx')
 
 NAME = "pyShelly"
-VERSION = "0.1.33"
+VERSION = "0.2.9"
 
 COAP_IP = "224.0.1.187"
 COAP_PORT = 5683
 
 MDNS_IP = "224.0.0.251"
 MDNS_PORT = 5353
+
+REGEX_VER = r"^20(\d{6}).+v(\d+\.\d+\.\d+(-rc\d)?)@"
 
 """Define constants for result from /status response from device"""
 STATUS_RESPONSE_RELAYS = 'relays'
@@ -48,6 +50,7 @@ STATUS_RESPONSE_ROLLERS_STATE = 'state'
 STATUS_RESPONSE_ROLLERS_LAST_DIR = 'last_direction'
 STATUS_RESPONSE_ROLLERS_POSITION = 'current_pos'
 STATUS_RESPONSE_ROLLERS_POWER = 'power'
+STATUS_RESPONSE_ROLLERS_TOTAL = 'total'
 
 SENSOR_UNAVAILABLE_SEC = 3600 * 13 #13 hours
 
@@ -59,6 +62,7 @@ INFO_VALUE_OVER_TEMPERATURE = 'over_temp'
 INFO_VALUE_SSID = 'ssid'
 INFO_VALUE_HAS_FIRMWARE_UPDATE = 'has_firmware_update'
 INFO_VALUE_LATEST_FIRMWARE_VERSION = 'latest_fw_version'
+INFO_VALUE_LATEST_BETA_FW_VERSION = 'latest_beta_fw_version'
 INFO_VALUE_FW_VERSION = 'firmware_version'
 INFO_VALUE_CLOUD_STATUS = 'cloud_status'
 INFO_VALUE_CLOUD_ENABLED = 'cloud_enabled'
@@ -77,21 +81,25 @@ INFO_VALUE_TILT = 'tilt'
 INFO_VALUE_VIBRATION = 'vibration'
 INFO_VALUE_TEMP = 'temperature'
 INFO_VALUE_ILLUMINANCE = 'illuminance'
-INFO_VALUE_PPM = 'ppm'
+INFO_VALUE_GAS = 'gas'
 INFO_VALUE_SENSOR = 'sensor'
 INFO_VALUE_TOTAL_WORK_TIME = 'total_work_time'
 
 ATTR_PATH = 'path'
 ATTR_FMT = 'fmt'
 ATTR_POS = 'pos'
+ATTR_CHANNEL = 'channel'
 ATTR_AUTO_SET = 'auto_set'
+
+SRC_COAP = 1
+SRC_STATUS = 2
 
 BLOCK_INFO_VALUES = {
     INFO_VALUE_SSID : {ATTR_PATH :'wifi_sta/ssid'},
     INFO_VALUE_RSSI : {ATTR_PATH : 'wifi_sta/rssi'},
     INFO_VALUE_UPTIME : {ATTR_PATH : 'uptime'},
-    INFO_VALUE_DEVICE_TEMP : {ATTR_PATH : 'tmp/tC'}, #, ATTR_FMT : 'round'},
-    INFO_VALUE_OVER_TEMPERATURE : {ATTR_PATH : 'overtemperature'},
+    INFO_VALUE_DEVICE_TEMP : {ATTR_PATH : 'tmp/tC', ATTR_POS: [311, 3104]}, #, ATTR_FMT : 'round'},
+    INFO_VALUE_OVER_TEMPERATURE : {ATTR_PATH : 'overtemperature', ATTR_POS: 6101},
     INFO_VALUE_HAS_FIRMWARE_UPDATE : {ATTR_PATH : 'update/has_update'},
     INFO_VALUE_LATEST_FIRMWARE_VERSION : {ATTR_PATH : 'update/new_version',
                                           ATTR_FMT : 'ver'},
@@ -102,12 +110,12 @@ BLOCK_INFO_VALUES = {
     INFO_VALUE_MQTT_CONNECTED : {ATTR_PATH : 'mqtt/connected'},
     #INFO_VALUE_CURRENT_CONSUMPTION : {ATTR_PATH : 'consumption'},
     #INFO_VALUE_VOLTAGE : {ATTR_PATH : 'voltage', ATTR_FMT : 'round'},
-    INFO_VALUE_BATTERY : {ATTR_PATH : 'bat/value'},
-    INFO_VALUE_TILT : {ATTR_PATH : 'accel/tilt'},
-    INFO_VALUE_VIBRATION : {ATTR_PATH : 'accel/vibration'},
+    INFO_VALUE_BATTERY : {ATTR_PATH : 'bat/value', ATTR_POS : 3111},
+    #INFO_VALUE_TILT : {ATTR_PATH : 'accel/tilt'}, #Todo
+    #INFO_VALUE_VIBRATION : {ATTR_PATH : 'accel/vibration'}, #Todo
     #INFO_VALUE_TEMP : {ATTR_PATH : 'tmp/tC'},
-    INFO_VALUE_ILLUMINANCE : {ATTR_PATH : 'lux/value'},
-    INFO_VALUE_PPM : {ATTR_PATH : 'concentration/ppm'},
+    #INFO_VALUE_ILLUMINANCE : {ATTR_PATH : 'lux/value'}, #Todo
+    INFO_VALUE_GAS : {ATTR_PATH : 'concentration/ppm'},
     INFO_VALUE_SENSOR : {ATTR_PATH : 'gas_sensor/sensor_state'},
     INFO_VALUE_TOTAL_WORK_TIME : {ATTR_PATH : 'total_work_time'},
 }
@@ -140,7 +148,8 @@ SHELLY_TYPES = {
                'mqtt':'shellydw2'},
     'SHBDUO-1': {'name': "Shelly Duo", 'mqtt':'ShellyBulbDuo'},
     'SHBVIN-1': {'name': "Shelly Vintage", 'mqtt':'ShellyVintage'},
-    'SHBTN-1': {'name': "Shelly Button 1", 'mqtt':'shellybutton1'},
+    'SHBTN-1': {'name': "Shelly Button 1", 'mqtt':'shellybutton1',
+                'battery' : True},
     'SHIX3-1': {'name': "Shelly i3", 'mqtt':'shellyix3'},
     'SHGS-1': {'name': "Shelly Gas", 'mqtt':'shellygas'},
     'SHAIR-1': {'name': "Shelly Air", 'mqtt':'ShellyAir'}

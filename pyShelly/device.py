@@ -2,27 +2,27 @@
 # pylint: disable=broad-except, bare-except
 
 from .const import LOGGER, SHELLY_TYPES
+from .base import Base
 
-class Device(object):
+class Device(Base):
     def __init__(self, block):
+        super(Device, self).__init__()
         self.block = block
         self.id = block.id
         self.unit_id = block.id
         self.type = block.type
         self.ip_addr = block.ip_addr
-        self.cb_updated = []
         self.is_device = True
         self.is_sensor = False
         self.sub_name = None
         self.state_values = None
-        self.sensor_values = None
-        self.info_values = None
+        #self.sensor_values = None
         self.state = None
         self.device_type = None
         self.device_sub_type = None #Used to make sensors unique
         self.lazy_load = False
         self.device_nr = None
-        self.master = False
+        self.master_unit = False
         self.ext_sensor = None
 
     def friendly_name(self):
@@ -89,40 +89,30 @@ class Device(object):
     def protocols(self):
         return self.block.protocols
 
-    def _update(self, new_state=None, new_state_values=None, new_values=None,
-                info_values=None):
+    def _update(self, src, new_state=None, new_state_values=None):
         LOGGER.debug(
-            "Update id:%s state:%s stateValue:%s values:%s info_values:%s",
-            self.id, new_state, new_state_values, new_values, info_values)
-        need_update = False
-        if new_state is not None:
-            if self.state != new_state:
-                self.state = new_state
-                need_update = True
+            "Update id:%s state:%s stateValue:%s",
+            self.id, new_state, new_state_values)
+        self._set_state(new_state, src)
         if new_state_values is not None:
             if self.state_values != new_state_values:
                 self.state_values = new_state_values
-                need_update = True
-        if new_values is not None:
-            self.sensor_values = new_values
-            need_update = True
-        if info_values is not None:
-            self.info_values = info_values
-            need_update = True
+                self.need_update = True
+        #if new_values is not None:
+        #    self.sensor_values = new_values
+        #    self.need_update = True
+        #if info_values is not None:
+        #    self.info_values = info_values
+        #    self.need_update = True
         if self.lazy_load:
             self.block.parent.callback_add_device(self)
-        if need_update:
-            self.raise_updated()
+        self.raise_updated()
 
     def update_status_information(self, _status):
         """Update the status information."""
 
     def fw_version(self):
         return self.block.fw_version()
-
-    def raise_updated(self):
-        for callback in self.cb_updated:
-            callback(self)
 
     def close(self):
         self.cb_updated = []

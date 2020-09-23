@@ -4,9 +4,10 @@
 import base64
 import traceback
 import json
+import urllib
+import socket
 from datetime import datetime
 from .compat import s
-
 try:
     import http.client as httplib
 except:
@@ -68,14 +69,25 @@ def shelly_http_get(host, url, username, password, log_error=True):
             LOGGER.warning(res)
     except Exception as ex:
         success = False
-        res = str(ex)
-        if log_error:
-            exception_log(ex, "Error http GET: http://{}{}", host, url)
+        if (type(ex) == socket.timeout):
+          msg = "Timeout connecting to http://" + host + url
+          try:
+            res = socket.gethostbyaddr(host)[0]
+            msg += " [" + res + "]"
+          except Exception as ex:
+            pass
+          LOGGER.error(msg)
         else:
-            LOGGER.debug(
-                "Fail http GET: %s %s %s", host, url, ex)
+          res = str(ex)
+          if log_error:
+              exception_log(ex, "Error http GET: http://{}{}", host, url)
+          else:
+              LOGGER.debug("Fail http GET: %s %s %s", host, url, ex)
     finally:
         if conn:
             conn.close()
 
     return success, res
+
+def notNone(value, default):
+    return default if value is None else value

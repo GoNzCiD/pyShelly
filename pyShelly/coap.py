@@ -14,7 +14,6 @@ from .const import (
     COAP_IP,
     COAP_PORT
 )
-
 class CoAP():
 
     def __init__(self, root):
@@ -59,7 +58,8 @@ class CoAP():
 
     def _loop(self):
 
-        time.sleep(10)  #Just wait some sec to get names from cloud etc
+        self._root.stopped.wait(10)
+        #Just wait some sec to get names from cloud etc
 
         next_igmp_fix = datetime.now() + timedelta(minutes=1)
 
@@ -169,7 +169,10 @@ class CoAP():
 
                         byte = data[pos]
 
-                    payload = s(data[pos + 1:])
+                    try:
+                        payload = s(data[pos + 1:])
+                    except:
+                        LOGGER.info(data)
 
                     if payload: #Fix for DW2 payload error
                         payload = payload.replace(",,",",").replace("][", "],[")
