@@ -4,7 +4,7 @@ import logging
 
 LOGGER = logging.getLogger('pyShellyEx')
 
-NAME = "pyShelly"
+NAME = "pyShellyEx"
 VERSION = "0.2.9"
 
 COAP_IP = "224.0.1.187"
